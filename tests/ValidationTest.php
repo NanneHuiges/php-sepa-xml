@@ -57,7 +57,7 @@ class ValidationTest extends \PHPUnit_Framework_TestCase
 		$payment = $sepaFile->addPaymentInfo(array(
 				'id'                      => 'paymentinformationgroupid_unique',
 				'creditorName'            => 'My Corp',
-				'creditorAccountIBAN'     => 'NL82ABNA0593035550',
+				'creditorAccountIBAN'     => 'NL71NBNY1537677675',
 				'creditorAgentBIC'        => 'ABNANL2A',
 				'localInstrumentCode'     => 'CORE',
 		));
@@ -70,13 +70,10 @@ class ValidationTest extends \PHPUnit_Framework_TestCase
 				'debtorBIC'             => 'RABONL2U',
 				'remittanceInformation' => 'Transaction description',
 				'mandateId'				=> 'myMandateId',
-				
 		));
 	
 		
 		$xml =  $sepaFile->asXML();
-		
-		file_put_contents("test_output.xml", $xml);
 		
 		$this->dom_DD->loadXML($xml);
 		
