@@ -27,12 +27,13 @@ namespace Digitick\Sepa;
  * @author Jérémy Cambon
  * @author Ianaré Sévi
  * @author Vincent MOMIN
+ * @author Nanne Huiges
  */
 
 /**
  * SEPA file "Payment Information" block.
  */
-class PaymentInfo extends FileBlock
+Abstract class PaymentInfo extends FileBlock
 {
     /**
      * @var string Unambiguously identify the payment.
@@ -42,27 +43,7 @@ class PaymentInfo extends FileBlock
      * @var string Purpose of the transaction(s).
      */
     public $categoryPurposeCode;
-    /**
-     * @var string Debtor's name.
-     */
-    public $debtorName;
-    /**
-     * @var string Debtor's account IBAN.
-     */
-    public $debtorAccountIBAN;
-    /**
-     * @var string Debtor's account bank BIC code.
-     */
-    public $debtorAgentBIC;
 
-    /**
-     * @var string Debtor's account ISO currency code.
-     */
-    protected $debtorAccountCurrency = 'EUR';
-    /**
-     * @var string Payment method.
-     */
-    protected $paymentMethod = 'TRF';
     /**
      * @var string Local service instrument code.
      */
@@ -75,61 +56,21 @@ class PaymentInfo extends FileBlock
      * @var integer Number of payment transactions.
      */
     protected $numberOfTransactions = 0;
+
     /**
-     * @var \Digitick\Sepa\CreditTransfer[]
-     */
-    protected $creditTransfers = array();
-    /**
-     * @var \Digitick\Sepa\TransferFile
+     * @var \Digitick\Sepa\Message
      */
     protected $transferFile;
 
     /**
      * Constructor.
-     * @param \Digitick\Sepa\TransferFile $transferFile
+     * @param \Digitick\Sepa\Message $transferFile
      */
-    public function __construct(TransferFile $transferFile)
+    public function __construct(Message $transferFile)
     {
         $this->setTransferFile($transferFile);
     }
 
-    /**
-     * Set the information for this "Payment Information" block.
-     * @param array $paymentInfo
-     */
-    public function setInfo(array $paymentInfo)
-    {
-        $values = array(
-            'id', 'categoryPurposeCode', 'debtorName', 'debtorAccountIBAN',
-            'debtorAgentBIC', 'debtorAccountCurrency'
-        );
-        foreach ($values as $name) {
-            if (isset($paymentInfo[$name]))
-                $this->$name = $paymentInfo[$name];
-        }
-        if (isset($paymentInfo['localInstrumentCode']))
-            $this->setLocalInstrumentCode($paymentInfo['localInstrumentCode']);
-
-        if (isset($paymentInfo['paymentMethod']))
-            $this->setPaymentMethod($paymentInfo['paymentMethod']);
-
-        if (isset($paymentInfo['debtorAccountCurrency']))
-            $this->setDebtorAccountCurrency($paymentInfo['debtorAccountCurrency']);
-    }
-
-    /**
-     * Set the payment method.
-     * @param string $method
-     * @throws \Digitick\Sepa\Exception
-     */
-    public function setPaymentMethod($method)
-    {
-        $method = strtoupper($method);
-        if (!in_array($method, array('CHK', 'TRF', 'TRA'))) {
-            throw new Exception("Invalid Payment Method: $method");
-        }
-        $this->paymentMethod = $method;
-    }
 
     /**
      * Set the local service instrument code.
@@ -139,21 +80,12 @@ class PaymentInfo extends FileBlock
     public function setLocalInstrumentCode($code)
     {
         $code = strtoupper($code);
-        if (!in_array($code, array('CORE', 'B2B'))) {
+        if (!in_array($code, array('CORE', 'B2B','COR1'))) {
             throw new Exception("Invalid Local Instrument Code: $code");
         }
         $this->localInstrumentCode = $code;
     }
 
-    /**
-     * Set the debtor's account currency code.
-     * @param string $code currency ISO code
-     * @throws \Digitick\Sepa\Exception
-     */
-    public function setDebtorAccountCurrency($code)
-    {
-        $this->debtorAccountCurrency = $this->validateCurrency($code);
-    }
 
     /**
      * @return integer
@@ -173,83 +105,12 @@ class PaymentInfo extends FileBlock
 
     /**
      * Set the transfer file.
-     * @param \Digitick\Sepa\TransferFile $transferFile
+     * @param \Digitick\Sepa\Message $transferFile
      */
-    public function setTransferFile(TransferFile $transferFile)
+    public function setTransferFile(Message $transferFile)
     {
         $this->transferFile = $transferFile;
     }
 
-    /**
-     * Add a credit transfer transaction.
-     * @param array $transferInfo
-     */
-    public function addCreditTransfer(array $transferInfo)
-    {
-        $transfer = new CreditTransfer();
-        $values = array(
-            'id', 'creditorBIC', 'creditorName',
-            'creditorAccountIBAN', 'remittanceInformation'
-        );
-        foreach ($values as $name) {
-            if (isset($transferInfo[$name]))
-                $transfer->$name = $transferInfo[$name];
-        }
-        if (isset($transferInfo['amount']))
-            $transfer->setAmount($transferInfo['amount']);
 
-        if (isset($transferInfo['currency']))
-            $transfer->setCurrency($transferInfo['currency']);
-
-        $transfer->endToEndId = $this->transferFile->messageIdentification . '/' . $this->getNumberOfTransactions();
-
-        $this->creditTransfers[] = $transfer;
-        $this->numberOfTransactions++;
-        $this->controlSumCents += $transfer->getAmountCents();
-    }
-
-    /**
-     * DO NOT CALL THIS FUNCTION DIRECTLY!
-     *
-     * Generate the XML structure for this "Payment Info" block.
-     *
-     * @param \SimpleXMLElement $xml
-     * @return \SimpleXMLElement
-     */
-    public function generateXml(\SimpleXMLElement $xml)
-    {
-        $datetime = new \DateTime();
-        $requestedExecutionDate = $datetime->format('Y-m-d');
-
-        // -- Payment Information --\\
-
-        $PmtInf = $xml->CstmrCdtTrfInitn->addChild('PmtInf');
-        $PmtInf->addChild('PmtInfId', $this->id);
-        if (isset($this->categoryPurposeCode))
-            $PmtInf->addChild('CtgyPurp')->addChild('Cd', $this->categoryPurposeCode);
-
-        $PmtInf->addChild('PmtMtd', $this->paymentMethod);
-        $PmtInf->addChild('NbOfTxs', $this->numberOfTransactions);
-        $PmtInf->addChild('CtrlSum', $this->intToCurrency($this->controlSumCents));
-        $PmtInf->addChild('PmtTpInf')->addChild('SvcLvl')->addChild('Cd', 'SEPA');
-        if ($this->localInstrumentCode)
-            $PmtInf->PmtTpInf->addChild('LclInstr')->addChild('Cd', $this->localInstrumentCode);
-
-        $PmtInf->addChild('ReqdExctnDt', $requestedExecutionDate);
-        $PmtInf->addChild('Dbtr')->addChild('Nm', htmlentities($this->debtorName));
-
-        $DbtrAcct = $PmtInf->addChild('DbtrAcct');
-        $DbtrAcct->addChild('Id')->addChild('IBAN', $this->debtorAccountIBAN);
-        $DbtrAcct->addChild('Ccy', $this->debtorAccountCurrency);
-
-        $PmtInf->addChild('DbtrAgt')->addChild('FinInstnId')->addChild('BIC', $this->debtorAgentBIC);
-        $PmtInf->addChild('ChrgBr', 'SLEV');
-
-        // -- Credit Transfer Transaction Information --\\
-
-        foreach ($this->creditTransfers as $transfer) {
-            $PmtInf = $transfer->generateXml($PmtInf);
-        }
-        return $xml;
-    }
 }

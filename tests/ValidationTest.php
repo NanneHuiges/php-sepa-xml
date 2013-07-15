@@ -2,24 +2,31 @@
 
 namespace Tests;
 
-use \Digitick\Sepa\TransferFile;
-
 /**
  * Various schema validation tests.
  */
 class ValidationTest extends \PHPUnit_Framework_TestCase
 {
 	protected $schema;
+	protected $schema_DD;
 
     /**
      * @var \DOMDocument
      */
     protected $dom;
+    
+    /**
+     * @var \DOMDocument
+     */
+    protected $dom_DD;
 	
 	protected function setUp()
 	{
 		$this->schema = __DIR__ . "/pain.001.001.03.xsd";
 		$this->dom = new \DOMDocument('1.0', 'UTF-8');
+		
+		$this->schema_DD = __DIR__ . "/pain.008.001.02.xsd";
+		$this->dom_DD = new \DOMDocument('1.0', 'UTF-8');
 	} 
 
 	/**
@@ -30,14 +37,61 @@ class ValidationTest extends \PHPUnit_Framework_TestCase
 		$this->dom->load(__DIR__ . '/pain.001.001.03.xml');
 		$validated = $this->dom->schemaValidate($this->schema);
 		$this->assertTrue($validated);
+		
+		$this->dom_DD->load(__DIR__ . '/pain.008.001.02.xml');
+		$validated = $this->dom_DD->schemaValidate($this->schema_DD);
+		$this->assertTrue($validated);
+		
 	}
+	
+
+	/**
+	 * Test a transfer file with one debit and one transaction, direct debit
+	 */
+	public function testSingleDDPaymentSingleTrans()
+	{
+		$sepaFile = new \Digitick\Sepa\DebitMessageING();
+		$sepaFile->messageIdentification = time().'unique.TODO';
+		$sepaFile->initiatingPartyName = 'Belsimpel.nl';
+	
+		$payment = $sepaFile->addPaymentInfo(array(
+				'id'                      => 'paymentinformationgroupid_unique',
+				'creditorName'            => 'My Corp',
+				'creditorAccountIBAN'     => 'NL82ABNA0593035550',
+				'creditorAgentBIC'        => 'ABNANL2A',
+				'localInstrumentCode'     => 'CORE',
+		));
+		$payment->addDebitTransfer(array(
+				'id'                    => 'Id shown in bank statement',
+				'currency'              => 'EUR',
+				'amount'                => '0.02',
+				'debtorName'            => 'Their Corp',
+				'debtorAccountIBAN'     => 'NL07NUYL9882399339',
+				'debtorBIC'             => 'RABONL2U',
+				'remittanceInformation' => 'Transaction description',
+				'mandateId'				=> 'myMandateId',
+				
+		));
+	
+		
+		$xml =  $sepaFile->asXML();
+		
+		file_put_contents("test_output.xml", $xml);
+		
+		$this->dom_DD->loadXML($xml);
+		
+		$validated = $this->dom_DD->schemaValidate($this->schema_DD);
+		$this->assertTrue($validated);
+	}	
+	
+	
 
 	/**
 	 * Test a transfer file with one payment and one transaction.
 	 */
 	public function testSinglePaymentSingleTrans()
 	{
-		$sepaFile = new TransferFile();
+		$sepaFile = new \Digitick\Sepa\CreditMessage();
 		$sepaFile->messageIdentification = 'transferID';
 		$sepaFile->initiatingPartyName = 'Me';
 		
@@ -68,7 +122,7 @@ class ValidationTest extends \PHPUnit_Framework_TestCase
 	 */
 	public function testSinglePaymentMultiTrans()
 	{
-		$sepaFile = new TransferFile();
+		$sepaFile = new \Digitick\Sepa\CreditMessage();
 		$sepaFile->messageIdentification = 'transferID';
 		$sepaFile->initiatingPartyName = 'Me';
 		
@@ -108,7 +162,7 @@ class ValidationTest extends \PHPUnit_Framework_TestCase
 	 */
 	public function testMultiPaymentSingleTrans()
 	{
-		$sepaFile = new TransferFile();
+		$sepaFile = new \Digitick\Sepa\CreditMessage();
 		$sepaFile->messageIdentification = 'transferID';
 		$sepaFile->initiatingPartyName = 'Me';
 		
@@ -154,7 +208,7 @@ class ValidationTest extends \PHPUnit_Framework_TestCase
 	 */
 	public function testMultiPaymentMultiTrans()
 	{
-		$sepaFile = new TransferFile();
+		$sepaFile = new \Digitick\Sepa\CreditMessage();
 		$sepaFile->messageIdentification = 'transferID';
 		$sepaFile->initiatingPartyName = 'Me';
 		

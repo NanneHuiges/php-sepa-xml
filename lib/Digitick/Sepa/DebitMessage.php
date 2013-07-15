@@ -27,90 +27,27 @@ namespace Digitick\Sepa;
  * @author Jérémy Cambon
  * @author Ianaré Sévi
  * @author Vincent MOMIN
+ * @author Nanne Huiges
  */
 
 /**
  * SEPA payments file object.
  */
-class TransferFile extends FileBlock
+class DebitMessage extends Message
 {
 	/**
-	 * @var boolean If true, the transaction will never be executed.
-	 */
-	public $isTest = false;
-	/**
-	 * @var string Unambiguously identify the message.
-	 */
-	public $messageIdentification;
-	/**
-	 * @var string Payment sender's name.
-	 */
-	public $initiatingPartyName;
-	/**
-	 * @var string Payment sender's ID (for example: the tax ID).
-	 */
-	public $initiatingPartyId;
-	/**
-	 * @var string Purpose of the transaction(s).
-	 */
-	public $categoryPurposeCode;
-	/**
-	 * @var string NOT USED - reserve for future.
-	 */
-	public $grouping;
-
-	/**
-	 * @var integer Sum of all transactions in all payments regardless of currency.
-	 */
-	protected $controlSumCents = 0;
-	/**
-	 * @var integer Number of payment transactions.
-	 */
-	protected $numberOfTransactions = 0;
-	/**
-	 * @var \SimpleXMLElement
-	 */
-	protected $xml;
-	/**
-	 * @var \Digitick\Sepa\PaymentInfo[]
+	 * @var \Digitick\Sepa\DebitPaymentInfo[]
 	 */
 	protected $payments;
 
-	const INITIAL_STRING = '<?xml version="1.0" encoding="UTF-8"?><Document xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="urn:iso:std:iso:20022:tech:xsd:pain.001.001.03"></Document>';
+	const INITIAL_STRING = '<?xml version="1.0" encoding="UTF-8"?><Document xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="urn:iso:std:iso:20022:tech:xsd:pain.008.001.02"></Document>';
 
 	public function __construct()
 	{
 		$this->xml = simplexml_load_string(self::INITIAL_STRING);
-		$this->xml->addChild('CstmrCdtTrfInitn');
+		$this->xml->addChild('CstmrDrctDbtInitn');
 	}
 	
-	/**
-	 * Return the XML string.
-	 * @return string
-	 */
-	public function asXML()
-	{
-		$this->generateXml();
-		return $this->xml->asXML();
-	}
-	
-	/**
-	 * Get the header control sum in cents.
-	 * @return integer
-	 */
-	public function getHeaderControlSumCents()
-	{
-		return $this->controlSumCents;
-	}
-
-	/**
-	 * Get the payment control sum in cents.
-	 * @return integer
-	 */
-	public function getPaymentControlSumCents()
-	{
-		return $this->controlSumCents;
-	}
 
 	/**
 	 * Set the information for the "Payment Information" block.
@@ -119,28 +56,14 @@ class TransferFile extends FileBlock
 	 */
 	public function addPaymentInfo(array $paymentInfo)
 	{
-		$payment = new PaymentInfo($this);
+		$payment = new DebitPaymentInfo($this);
 		$payment->setInfo($paymentInfo);
-		
+	
 		$this->payments[] = $payment;
-		
+	
 		return $payment;
-	}
-
-	/**
-	 * Update counters related to "Payment Information" blocks.
-	 */
-	protected function updatePaymentCounters()
-	{
-		$this->numberOfTransactions = 0;
-		$this->controlSumCents = 0;
-		
-		foreach ($this->payments as $payment) {
-			$this->numberOfTransactions += $payment->getNumberOfTransactions();
-			$this->controlSumCents += $payment->getControlSumCents();
-		}
-	}
-
+	}	
+	
 	/**
 	 * Generate the XML structure.
 	 */
@@ -153,7 +76,7 @@ class TransferFile extends FileBlock
 
 		// -- Group Header -- \\
 
-		$GrpHdr = $this->xml->CstmrCdtTrfInitn->addChild('GrpHdr');
+		$GrpHdr = $this->xml->CstmrDrctDbtInitn->addChild('GrpHdr');
 		$GrpHdr->addChild('MsgId', $this->messageIdentification);
 		$GrpHdr->addChild('CreDtTm', $creationDateTime);
 		if ($this->isTest)
