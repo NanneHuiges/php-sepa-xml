@@ -33,7 +33,7 @@ namespace Digitick\Sepa;
 /**
  * SEPA payments file object.
  */
-class DebitMessage extends Message
+abstract class DebitMessage extends Message
 {
 	/**
 	 * @var \Digitick\Sepa\DebitPaymentInfo[]
@@ -54,44 +54,11 @@ class DebitMessage extends Message
 	 * @param array $paymentInfo
 	 * @return \Digitick\Sepa\PaymentInfo
 	 */
-	public function addPaymentInfo(array $paymentInfo)
-	{
-		$payment = new DebitPaymentInfo($this);
-		$payment->setInfo($paymentInfo);
-	
-		$this->payments[] = $payment;
-	
-		return $payment;
-	}	
+	abstract public function addPaymentInfo(array $paymentInfo);	
 	
 	/**
 	 * Generate the XML structure.
 	 */
-	protected function generateXml()
-	{
-		$this->updatePaymentCounters();
-		
-		$datetime = new \DateTime();
-		$creationDateTime = $datetime->format('Y-m-d\TH:i:s');
-
-		// -- Group Header -- \\
-
-		$GrpHdr = $this->xml->CstmrDrctDbtInitn->addChild('GrpHdr');
-		$GrpHdr->addChild('MsgId', $this->messageIdentification);
-		$GrpHdr->addChild('CreDtTm', $creationDateTime);
-		if ($this->isTest)
-			$GrpHdr->addChild('Authstn')->addChild('Prtry', 'TEST');
-
-		$GrpHdr->addChild('NbOfTxs', $this->numberOfTransactions);
-		$GrpHdr->addChild('CtrlSum', $this->intToCurrency($this->controlSumCents));
-		$GrpHdr->addChild('InitgPty')->addChild('Nm', $this->initiatingPartyName);
-		if (isset($this->initiatingPartyId))
-			$GrpHdr->addChild('InitgPty')->addChild('Id', $this->initiatingPartyId);
-
-		// -- Payment Information --\\
-		foreach ($this->payments as $payment) {
-			$this->xml = $payment->generateXml($this->xml);
-		}
-	}
+	abstract protected function generateXml();
 }
 

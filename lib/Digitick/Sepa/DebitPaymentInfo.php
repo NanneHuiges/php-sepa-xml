@@ -33,7 +33,7 @@ namespace Digitick\Sepa;
 /**
  * SEPA file "Payment Information" block.
  */
-class DebitPaymentInfo extends PaymentInfo
+abstract class DebitPaymentInfo extends PaymentInfo
 {
     /**
      * @var string Payment method.
@@ -117,30 +117,9 @@ class DebitPaymentInfo extends PaymentInfo
      * Add a credit transfer transaction.
      * @param array $transferInfo
      */
-    public function addDebitTransfer(array $transferInfo)
-    {
-        $transfer = new DebitTransfer();
-        $values = array(
-            'id', 'debtorBIC', 'debtorName',
-            'debtorAccountIBAN', 'remittanceInformation','mandateId'
-        );
-        foreach ($values as $name) {
-            if (isset($transferInfo[$name]))
-                $transfer->$name = $transferInfo[$name];
-        }
-        if (isset($transferInfo['amount']))
-            $transfer->setAmount($transferInfo['amount']);
-
-        if (isset($transferInfo['currency']))
-            $transfer->setCurrency($transferInfo['currency']);
-
-        $transfer->endToEndId = $this->transferFile->messageIdentification . '/' . $this->getNumberOfTransactions();
-
-        $this->debitTransfers[] = $transfer;
-        $this->numberOfTransactions++;
-        $this->controlSumCents += $transfer->getAmountCents();
-    }
-
+    abstract public function addDebitTransfer(array $transferInfo);
+    
+    
     /**
      * DO NOT CALL THIS FUNCTION DIRECTLY!
      *
@@ -149,40 +128,5 @@ class DebitPaymentInfo extends PaymentInfo
      * @param \SimpleXMLElement $xml
      * @return \SimpleXMLElement
      */
-    public function generateXml(\SimpleXMLElement $xml)
-    {
-        $datetime = new \DateTime();
-        $requestedCollectionDate = $datetime->format('Y-m-d');
-
-        // -- Payment Information --\\
-
-        $PmtInf = $xml->CstmrDrctDbtInitn->addChild('PmtInf');
-        $PmtInf->addChild('PmtInfId', $this->id);
-        if (isset($this->categoryPurposeCode))
-            $PmtInf->addChild('CtgyPurp')->addChild('Cd', $this->categoryPurposeCode);
-
-        $PmtInf->addChild('PmtMtd', $this->paymentMethod);
-        $PmtInf->addChild('NbOfTxs', $this->numberOfTransactions);
-        $PmtInf->addChild('CtrlSum', $this->intToCurrency($this->controlSumCents));
-        $PmtInf->addChild('PmtTpInf')->addChild('SvcLvl')->addChild('Cd', 'SEPA');
-        if ($this->localInstrumentCode)
-            $PmtInf->PmtTpInf->addChild('LclInstrm')->addChild('Cd', $this->localInstrumentCode);
-
-        $PmtInf->addChild('ReqdColltnDt', $requestedCollectionDate);
-        $PmtInf->addChild('Cdtr')->addChild('Nm', htmlentities($this->creditorName));
-
-        $CdtrAcct = $PmtInf->addChild('CdtrAcct');
-        $CdtrAcct->addChild('Id')->addChild('IBAN', $this->creditorAccountIBAN);
-        $CdtrAcct->addChild('Ccy', $this->creditorAccountCurrency);
-
-        $PmtInf->addChild('CdtrAgt')->addChild('FinInstnId')->addChild('BIC', $this->creditorAgentBIC);
-        $PmtInf->addChild('ChrgBr', 'SLEV');
-
-        // -- Credit Transfer Transaction Information --\\
-
-        foreach ($this->debitTransfers as $transfer) {
-            $PmtInf = $transfer->generateXml($PmtInf);
-        }
-        return $xml;
-    }
+    abstract public function generateXml(\SimpleXMLElement $xml);
 }

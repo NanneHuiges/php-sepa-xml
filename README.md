@@ -15,7 +15,7 @@ Verify generated files with your bank before using!!!
 
 **API subject to change.**
 
-##Usage
+##Usage Credit
 ```php
 $sepaFile = new SepaTransferFile();
 $sepaFile->messageIdentification = 'transferID';
@@ -56,4 +56,35 @@ echo $sepaFile->asXML();
 /* After generating the file, these two values can be retrieved: */
 echo $sepaFile->getHeaderControlSumCents();
 echo $payment1->getPaymentControlSumCents();
+```
+
+##Usage Debit (for ING)
+Usage for Debit looks a lot like for Credit. Be advised that there are differences between countries (and banks!) so you might need to make your own child-classes.
+
+```php
+
+$sepaFile = new \Digitick\Sepa\DebitMessageING();
+$sepaFile->messageIdentification = time().'unique.TODO'; //this currently needs work
+$sepaFile->initiatingPartyName = 'yourname';
+	
+$payment = $sepaFile->addPaymentInfo(array(
+				'id'                      => 'paymentinformationgroupid_unique',
+				'creditorName'            => 'My Corp',
+				'creditorAccountIBAN'     => 'NL71NBNY1537677675',
+				'creditorAgentBIC'        => 'ABNANL2A',
+				'localInstrumentCode'     => 'CORE',
+));
+$payment->addDebitTransfer(array(
+				'id'                    => 'Id shown in bank statement',
+				'currency'              => 'EUR',
+				'amount'                => '0.02',
+				'debtorName'            => 'Their Corp',
+				'debtorAccountIBAN'     => 'NL07NUYL9882399339',
+				'debtorBIC'             => 'RABONL2U',
+				'remittanceInformation' => 'Transaction description',
+				'mandateId'				=> 'myMandateId',
+));
+
+/* Generate the file and return the XML string. */
+echo $sepaFile->asXML();
 ```

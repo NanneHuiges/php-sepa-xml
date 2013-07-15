@@ -25,7 +25,7 @@ namespace Digitick\Sepa;
 /**
  * SEPA file "Debit Transfer Transaction Information" block.
  */
-class DebitTransfer extends FileBlock
+abstract class DebitTransfer extends FileBlock
 {
 	/**
 	 * @var string Payment ID.
@@ -107,25 +107,5 @@ class DebitTransfer extends FileBlock
 	 * @param \SimpleXMLElement $xml
 	 * @return \SimpleXMLElement
 	 */
-	public function generateXml(\SimpleXMLElement $xml)
-	{
-		// -- Credit Transfer Transaction Information --\\
-		
-		$amount = $this->intToCurrency($this->getAmountCents());
-
-		$DrctDbtTxInf = $xml->addChild('DrctDbtTxInf');
-		$PmtId = $DrctDbtTxInf->addChild('PmtId');
-		$PmtId->addChild('InstrId', $this->id);
-		$PmtId->addChild('EndToEndId', $this->endToEndId);
-		$DrctDbtTxInf->addChild('InstdAmt', $amount)->addAttribute('Ccy', $this->currency);
-		
-		$DrctDbtTxInf->addChild('DrctDbtTx')->addChild('MndtRltdInf')->addChild('MndtId',$this->mandateId);
-		
-		$DrctDbtTxInf->addChild('DbtrAgt')->addChild('FinInstnId')->addChild('BIC', $this->debtorBIC);
-		$DrctDbtTxInf->addChild('Dbtr')->addChild('Nm', htmlentities($this->debtorName));
-		$DrctDbtTxInf->addChild('DbtrAcct')->addChild('Id')->addChild('IBAN', $this->debtorAccountIBAN);
-		$DrctDbtTxInf->addChild('RmtInf')->addChild('Ustrd', $this->remittanceInformation);
-		
-		return $xml;
-	}
+	abstract public function generateXml(\SimpleXMLElement $xml);
 }

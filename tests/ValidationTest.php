@@ -52,7 +52,7 @@ class ValidationTest extends \PHPUnit_Framework_TestCase
 	{
 		$sepaFile = new \Digitick\Sepa\DebitMessageING();
 		$sepaFile->messageIdentification = time().'unique.TODO';
-		$sepaFile->initiatingPartyName = 'Belsimpel.nl';
+		$sepaFile->initiatingPartyName = 'yourname';
 	
 		$payment = $sepaFile->addPaymentInfo(array(
 				'id'                      => 'paymentinformationgroupid_unique',

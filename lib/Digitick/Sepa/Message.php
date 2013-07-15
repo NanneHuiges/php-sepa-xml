@@ -33,7 +33,7 @@ namespace Digitick\Sepa;
 /**
  * SEPA payments file object.
  */
-Abstract class Message extends FileBlock
+abstract class Message extends FileBlock
 {
 	/**
 	 * @var boolean If true, the transaction will never be executed.
