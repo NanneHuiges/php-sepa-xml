@@ -33,13 +33,15 @@ namespace Digitick\Sepa;
 /**
  * SEPA payments file object.
  */
-class DebitMessageING extends DebitMessage
-{
-/**
- * (non-PHPdoc)
- * ING needs a specia PaymentInfo type
- * @see \Digitick\Sepa\DebitMessage::addPaymentInfo()
- */
+class DebitMessageING extends DebitMessage{
+	
+	//possible override needed for special ING xsd?
+	
+	/**
+	 * (non-PHPdoc)
+	 * ING needs a specia PaymentInfo type
+	 * @see \Digitick\Sepa\DebitMessage::addPaymentInfo()
+	 */
 	public function addPaymentInfo(array $paymentInfo)
 	{
 		$payment = new DebitPaymentInfoING($this);
@@ -51,12 +53,26 @@ class DebitMessageING extends DebitMessage
 	}	
 	
 	/**
+	 * Check variables that have not been checked in any function before
+	 * 
+	 */
+	public function clean(){
+		//The id must be unique to be usefull, so abort if too long
+		if(strlen($this->messageIdentification) > 35){
+			throw new Exception('messageIdentification should be less then 35 characters');
+		}
+		//partyname is less important: remove too long strings
+		$this->initiatingPartyName = substr($this->initiatingPartyName, 0,70);  
+	}
+	
+	/**
 	 * Generate the XML structure.
 	 */
 	protected function generateXml()
 	{
 		$this->updatePaymentCounters();
-	
+		$this->clean();
+		
 		$datetime = new \DateTime();
 		$creationDateTime = $datetime->format('Y-m-d\TH:i:s');
 	

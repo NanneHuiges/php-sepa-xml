@@ -77,9 +77,12 @@ abstract class Message extends FileBlock
 	 * Return the XML string.
 	 * @return string
 	 */
-	public function asXML()
+	public function asXML($xsd = false)
 	{
 		$this->generateXml();
+		if($xsd){
+			$this->checkXML();
+		}
 		return $this->xml->asXML();
 	}
 	
@@ -115,6 +118,8 @@ abstract class Message extends FileBlock
 			$this->controlSumCents += $payment->getControlSumCents();
 		}
 	}
+	
+	abstract protected function checkXML();
 
 }
 

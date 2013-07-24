@@ -50,5 +50,28 @@ abstract class FileBlock
 
 		return $code;
 	}
+	
+	/**
+	 * Validates BIC according to the xsd expression
+	 * @param string $bic
+	 */
+	protected function validateBIC($bic){
+		$pattern = '/^[A-Z]{6,6}[A-Z2-9][A-NP-Z0-9]([A-Z0-9]{3,3}){0,1}$/';
+		if( ! preg_match($pattern, $bic)){
+			throw new Exception("'$bic' is not a valid BIC");
+		}
+	}
+	/**
+	 * Validates IBAN according to the xsd expression
+	 * @param string $iban
+	 */
+	protected function validateIBAN($iban){
+		$pattern = '/^[A-Z]{2,2}[0-9]{2,2}[a-zA-Z0-9]{1,30}$/';
+		if( ! preg_match($pattern, $iban)){
+			throw new Exception("'$iban' is not a valid IBAN");
+		}
+	}
+
+	
 
 }

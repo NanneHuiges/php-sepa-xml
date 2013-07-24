@@ -27,6 +27,72 @@ namespace Digitick\Sepa;
  */
 class DebitTransferING extends DebitTransfer
 {
+	
+	private function cleanTransferArray($transferInfo){
+		if(!isset($transferInfo['id']) || strlen($transferInfo['id']) > 35){
+			throw new Exception('InstructionIdentification should be set and 35 characters or less');
+		}
+		
+		if(isset($transferInfo['debtorBIC'])){
+			$this->validateBIC($transferInfo['debtorBIC']);
+		}else{
+			throw new Exception('Only BIC/IBAN identification supported, so debtorBIC is mandatory');
+		}
+		
+		if(isset($transferInfo['debtorAccountIBAN'])){
+			$this->validateIBAN($transferInfo['debtorAccountIBAN']);
+		}else{
+			throw new Exception('Only BIC/IBAN identification supported, so debtorAccountIBAN is mandatory');
+		}
+				
+		if(isset($transferInfo['debtorName'])){
+			$transferInfo['debtorName'] = substr($transferInfo['debtorName'], 0,140);
+		}else{
+			throw new Exception('Please provide a debtorName');
+		}
+				
+		
+		if(isset($transferInfo['remittanceInformation'])){
+			$transferInfo['remittanceInformation'] = substr($transferInfo['remittanceInformation'], 0,140);
+		}else{
+			throw new Exception('Please provide the remittanceInformation');
+		}
+
+		if(isset($transferInfo['mandateId'])){
+			if(strlen($transferInfo['mandateId']) > 35){
+				throw new Exception('When including a mandateId, it should be 35 characters or less');
+			}
+			if(!isset($transferInfo['mandateSigDate'])){
+				throw new Exception('If mandateId is provided, the singature date is mandatory.');
+			}
+		}
+	}
+	
+	/**
+	 * Set the information for this transfer transaction block.
+	 * @param array $transferInfo
+	 */
+	public function setInfo($transferInfo){
+		$this->cleanTransferArray(&$transferInfo);
+
+		$this->id 						= $transferInfo['id'];
+		$this->debtorBIC 				= $transferInfo['debtorBIC'];
+		$this->debtorName 				= $transferInfo['debtorName'];
+		$this->debtorAccountIBAN 		= $transferInfo['debtorAccountIBAN'];
+		$this->remittanceInformation	= $transferInfo['remittanceInformation'];
+		if(isset($transferInfo['mandateId'])){
+			$this->mandateId			= $transferInfo['mandateId'];
+			$this->mandateSigDate 		= $transferInfo['mandateSigDate'];
+		}	
+		
+		if (isset($transferInfo['amount']))
+			$this->setAmount($transferInfo['amount']);
+		
+		if (isset($transferInfo['currency']))
+			$this->setCurrency($transferInfo['currency']);
+		
+		
+	}
 	/**
 	 * (non-PHPdoc)
 	 * @see \Digitick\Sepa\DebitTransfer::generateXml()
@@ -43,9 +109,11 @@ class DebitTransferING extends DebitTransfer
 		$PmtId->addChild('EndToEndId', $this->endToEndId);
 		$DrctDbtTxInf->addChild('InstdAmt', $amount)->addAttribute('Ccy', $this->currency);
 		
-		$MndtRltdInf = $DrctDbtTxInf->addChild('DrctDbtTx')->addChild('MndtRltdInf');
-		$MndtRltdInf->addChild('MndtId',$this->mandateId);
-		$MndtRltdInf->addChild('DtOfSgntr', '2012-01-01'); //TODO
+		if(isset($this->mandateId) && isset($this->mandateSigDate)){
+			$MndtRltdInf = $DrctDbtTxInf->addChild('DrctDbtTx')->addChild('MndtRltdInf');
+			$MndtRltdInf->addChild('MndtId',$this->mandateId);
+			$MndtRltdInf->addChild('DtOfSgntr', $this->mandateSigDate); 
+		}
 		
 		$DrctDbtTxInf->addChild('DbtrAgt')->addChild('FinInstnId')->addChild('BIC', $this->debtorBIC);
 		$DrctDbtTxInf->addChild('Dbtr')->addChild('Nm', htmlentities($this->debtorName));

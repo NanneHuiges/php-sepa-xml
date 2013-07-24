@@ -88,30 +88,7 @@ abstract class DebitPaymentInfo extends PaymentInfo
     	$this->paymentMethod = $method;
     }
     
-    /**
-     * Set the information for this "Payment Information" block.
-     * @param array $paymentInfo
-     */
-    public function setInfo(array $paymentInfo)
-    {
-        $values = array(
-            'id', 'categoryPurposeCode', 'creditorName', 'creditorAccountIBAN',
-            'creditorAgentBIC', 'creditorAccountCurrency'
-        );
-        foreach ($values as $name) {
-            if (isset($paymentInfo[$name]))
-                $this->$name = $paymentInfo[$name];
-        }
-        if (isset($paymentInfo['localInstrumentCode']))
-            $this->setLocalInstrumentCode($paymentInfo['localInstrumentCode']);
-
-        if (isset($paymentInfo['paymentMethod']))
-            $this->setPaymentMethod($paymentInfo['paymentMethod']);
-
-        if (isset($paymentInfo['creditorAccountCurrency']))
-            $this->setCreditorAccountCurrency($paymentInfo['creditorAccountCurrency']);
-    }
-
+    abstract public function setInfo(array $paymentInfo);
 
     /**
      * Add a credit transfer transaction.

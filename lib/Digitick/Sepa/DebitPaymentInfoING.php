@@ -35,30 +35,78 @@ namespace Digitick\Sepa;
  */
 class DebitPaymentInfoING extends DebitPaymentInfo
 {
+	/**
+	 * Check and clean the array of paymentinfo values.
+	 * For any non-recoverable errors an exception will be thrown. 
+	 * Others will be fixed (e.g. truncated).
+	 * 
+	 * @param array $paymentInfo as used in setInfo
+	 * @throws Exception for any non-recoverable violations like wrong ID's
+	 */
+	private function cleanInfoArray($paymentInfo){
+		if(!isset($paymentInfo['id']) || strlen($paymentInfo['id']) > 35){
+			throw new Exception('Payment Information Identification should be set and 35 characters or less');
+		}		
+		if(isset($paymentInfo['creditorName'])){
+			$paymentInfo['creditorName'] = substr($paymentInfo['creditorName'], 0,70);
+		}
+		
+		if(isset($paymentInfo['creditorAccountIBAN'])){
+			$this->validateIBAN($paymentInfo['creditorAccountIBAN']);
+		}
+		
+		if(isset($paymentInfo['creditorAgentBIC']) ){
+			$this->validateBIC($paymentInfo['creditorAgentBIC']);
+		}
+		
+		if(isset($paymentInfo['creditorAccountCurrency']) && $paymentInfo['creditorAccountCurrency'] != 'EUR'){
+			throw new Exception('ING only support EUR as creditorAccountCurrency');
+		}
+		
+		if (isset($paymentInfo['localInstrumentCode']) && $paymentInfo['localInstrumentCode'] == 'COR1'){
+			throw new Exception('ING does not (yet) support COR1');
+		}
+				
+	}
+	
+	/**
+	 * Set the information for this "Payment Information" block.
+	 * Cleans information
+	 * @param array $paymentInfo
+	 */
+	public function setInfo(array $paymentInfo){
+		$this->cleanInfoArray(&$paymentInfo);
+		
+		$this->id = $paymentInfo['id'];
+		if(isset($paymentInfo['creditorName'])){
+			$this->creditorName = substr($paymentInfo['creditorName'], 0,70);
+		}	
+		if(isset($paymentInfo['creditorAccountIBAN'])){
+			$this->creditorAccountIBAN  = $paymentInfo['creditorAccountIBAN']; 
+		}		
+		if(isset($paymentInfo['creditorAgentBIC']) ){
+			$this->creditorAgentBIC = $paymentInfo['creditorAgentBIC'];
+		}
+		
+		if (isset($paymentInfo['localInstrumentCode'])){
+				$this->setLocalInstrumentCode($paymentInfo['localInstrumentCode']);
+		}
+		if (isset($paymentInfo['paymentMethod'])){
+			$this->setPaymentMethod($paymentInfo['paymentMethod']);
+		}
+	
+	}
+	
 	
 	/**
 	 * Add a credit transfer transaction.
 	 * @param array $transferInfo
 	 */
-	public function addDebitTransfer(array $transferInfo)
-	{
+	public function addDebitTransfer(array $transferInfo){
 		$transfer = new DebitTransferING();
-		$values = array(
-				'id', 'debtorBIC', 'debtorName',
-				'debtorAccountIBAN', 'remittanceInformation','mandateId'
-		);
-		foreach ($values as $name) {
-			if (isset($transferInfo[$name]))
-				$transfer->$name = $transferInfo[$name];
-		}
-		if (isset($transferInfo['amount']))
-			$transfer->setAmount($transferInfo['amount']);
-	
-		if (isset($transferInfo['currency']))
-			$transfer->setCurrency($transferInfo['currency']);
-	
+		$transfer->setInfo($transferInfo);
 		$transfer->endToEndId = $this->transferFile->messageIdentification . '/' . $this->getNumberOfTransactions();
-	
+		
 		$this->debitTransfers[] = $transfer;
 		$this->numberOfTransactions++;
 		$this->controlSumCents += $transfer->getAmountCents();
@@ -69,19 +117,14 @@ class DebitPaymentInfoING extends DebitPaymentInfo
      * AS ING does not accept currency, that field needs to be removed.
      * @see \Digitick\Sepa\DebitPaymentInfo::generateXml()
      */
-    public function generateXml(\SimpleXMLElement $xml)
-    {
+    public function generateXml(\SimpleXMLElement $xml){
         $datetime = new \DateTime();
         $requestedCollectionDate = $datetime->format('Y-m-d');
 
         // -- Payment Information --\\
 
         $PmtInf = $xml->CstmrDrctDbtInitn->addChild('PmtInf');
-        $PmtInf->addChild('PmtInfId', $this->id); 				//unique, max35 (from addpaymentinfo array)
-        if (isset($this->categoryPurposeCode)){
-        	throw new Exception('Categorypurpose is not part of the IG SDD netherlands addendum');
-        }
-            
+        $PmtInf->addChild('PmtInfId', $this->id); 	          
 
         $PmtInf->addChild('PmtMtd', $this->paymentMethod);
         $PmtInf->addChild('NbOfTxs', $this->numberOfTransactions);

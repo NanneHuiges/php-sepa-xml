@@ -52,30 +52,31 @@ class ValidationTest extends \PHPUnit_Framework_TestCase
 	{
 		$sepaFile = new \Digitick\Sepa\DebitMessageING();
 		$sepaFile->messageIdentification = time().'unique.TODO';
-		$sepaFile->initiatingPartyName = 'yourname';
+		$sepaFile->initiatingPartyName   = 'yourname';
 	
 		$payment = $sepaFile->addPaymentInfo(array(
-				'id'                      => 'paymentinformationgroupid_unique',
+				'id'                      => time().'_35char-batch-id',  
 				'creditorName'            => 'My Corp',
 				'creditorAccountIBAN'     => 'NL71NBNY1537677675',
 				'creditorAgentBIC'        => 'ABNANL2A',
 				'localInstrumentCode'     => 'CORE',
 		));
 		$payment->addDebitTransfer(array(
-				'id'                    => 'Id shown in bank statement',
+				'id'                    => 'Debit description, max 35 text',
 				'currency'              => 'EUR',
 				'amount'                => '0.02',
-				'debtorName'            => 'Their Corp',
+				'debtorName'            => 'Their Corp'.time().time().time().time().time().time().time().time().time().time().time().time().time().time().time().time().time().time().time().time().time().time().time(),
 				'debtorAccountIBAN'     => 'NL07NUYL9882399339',
 				'debtorBIC'             => 'RABONL2U',
-				'remittanceInformation' => 'Transaction description',
-				'mandateId'				=> 'myMandateId',
+				'remittanceInformation' => 'Transaction description', // voor klant!
 		));
 	
 		
-		$xml =  $sepaFile->asXML();
-		
+		$xml =  $sepaFile->asXML(true);
+		file_put_contents("test_output.xml", $xml);
 		$this->dom_DD->loadXML($xml);
+		
+		
 		
 		$validated = $this->dom_DD->schemaValidate($this->schema_DD);
 		$this->assertTrue($validated);

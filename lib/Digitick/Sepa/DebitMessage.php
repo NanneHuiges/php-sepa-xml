@@ -48,6 +48,13 @@ abstract class DebitMessage extends Message
 		$this->xml->addChild('CstmrDrctDbtInitn');
 	}
 	
+	protected function checkXML(){
+		$xsd = __DIR__.'/../../../assets/pain.008.001.02.xsd';
+		$dom = new \DOMDocument('1.0', 'UTF-8');
+		$dom->loadXML($this->xml->asXML());
+		$dom->schemaValidate($xsd);
+	}
+	
 
 	/**
 	 * Set the information for the "Payment Information" block.
